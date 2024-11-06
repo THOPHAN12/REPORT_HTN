@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lấy Thông Tin Thời Tiết</title>
+    <link rel="icon" href="D:/REPORT_HTN/images.ico" type="image/x-icon">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        /* Giao diện tối giản */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f8ff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        header {
+            background-color: #007bff;
+            padding: 10px;
+            text-align: center;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        header img {
+            width: 100px; /* Thay đổi kích thước logo theo ý muốn */
+            height: auto;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            text-align: center;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #weatherResult {
+            margin-top: 20px;
+            color: #333;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        #map {
+            height: 300px;
+            width: 100%;
+            margin-top: 20px;
+            border-radius: 5px;
+        }
+
+        /* Định dạng bản đồ ở góc trái màn hình */
+        .vietnam-map {
+            position: fixed;
+            top: 200px;
+            left: 100px;
+            width: 400px; /* Thay đổi kích thước theo ý muốn */
+            opacity: 0.8; /* Độ trong suốt nếu cần */
+            z-index: 500; /* Đảm bảo bản đồ luôn nằm trên cùng */
+            transition: transform 1s ease; /* Hiệu ứng chuyển động */
+        }
+        .vietnam-map.active {
+            transform: translateY(-100px); /* Hiệu ứng chuyển động khi trang tải */
+        }
+    </style>
+</head>
+<body>
+    <!-- Hình ảnh bản đồ Việt Nam -->
+    <img src="D:/REPORT_HTN/snapedit_1730698817802.jpeg" alt="Bản đồ Việt Nam" class="vietnam-map" id="vietnamMap">
+    <div class="container">
+        <h2>Nhập khu vực để lấy thời tiết cập nhật cho vi điều khiển</h2>
+        <input type="text" id="location" placeholder="Nhập tên thành phố hoặc khu vực" onkeypress="checkEnter(event)">
+        <button onclick="getWeather()">Lấy Thời Tiết</button>
+        <div id="weatherResult"></div>
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        let map;
+
+        async function getWeather() {
+            const location = document.getElementById('location').value;
+            const apiKey = 'e7c76e2285f76038d6a6fc8115b212cc';
+            const apiUrl = `https://api.openweathermap.org/data/2.5/weather?q=${location}&appid=${apiKey}&lang=vi&units=metric`;
+
+            document.getElementById('weatherResult').innerHTML = '<p>Đang tải...</p>';
+            
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error("Khu vực không hợp lệ hoặc không tìm thấy.");
+
+                const weatherData = await response.json();
+                const temperature = weatherData.main.temp;
+                const description = weatherData.weather[0].description;
+                const cityName = weatherData.name;
+                const lat = weatherData.coord.lat;
+                const lon = weatherData.coord.lon;
+
+                document.getElementById('weatherResult').innerHTML = `
+                    <h3>Thời tiết tại ${cityName}</h3>
+                    <p>Nhiệt độ: ${temperature}°C</p>
+                    <p>Mô tả: ${description}</p>
+                `;
+                document.getElementById('weatherResult').classList.remove('error');
+
+                showMap(lat, lon);
+            } catch (error) {
+                document.getElementById('weatherResult').innerHTML = `<p class="error">${error.message}</p>`;
+                document.getElementById('weatherResult').classList.add('error');
+            }
+        }
+
+        function checkEnter(event) {
+            if (event.key === 'Enter') {
+                getWeather();
+            }
+        }
+
+        function showMap(lat, lon) {
+            if (map) {
+                map.remove();
+            }
+            map = L.map('map').setView([lat, lon], 13);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            L.marker([lat, lon]).addTo(map)
+                .bindPopup('Địa điểm: ' + document.getElementById('location').value)
+                .openPopup();
+        }
+
+        window.onload = function() {
+            document.getElementById('location').value = ''; // Đặt lại ô nhập trống mỗi khi tải trang
+            
+            // Thêm hiệu ứng chuyển động cho hình ảnh bản đồ Việt Nam
+            const vietnamMap = document.getElementById('vietnamMap');
+            vietnamMap.classList.add('active');
+        };
+    </script>
+</body>
+</html>
